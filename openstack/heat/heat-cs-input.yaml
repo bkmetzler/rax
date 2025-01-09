@@ -1,0 +1,32 @@
+heat_template_version: 2014-10-16
+description: Basic Ubuntu Cloud Server: CloudInit script and Input Parameter for Flavor Size of Cloud Server
+
+parameters:
+  instance_type:
+    type: string
+    description: Type of instance (flavor) to be used
+    default: 1 GB Performance 
+    constraints:
+      - allowed_values: [ 1 GB Performance, 2 GB Performance, 4 GB Performance ]
+        description: Value must be one of 1 GB Performance, 2 GB Performance, or 4 GB Performance. 
+
+resources:
+  cf_nodes:
+    type: Rackspace::Cloud::Server
+    properties:
+        flavor: { get_param: instance_type }
+        image: Ubuntu 14.04 LTS (Trusty Tahr)
+        name: name-heattest
+        key_name: name-key
+        user_data_format: RAW
+        user_data: |
+            export DEBIAN_FRONTEND=noninteractive
+            sudo apt-get update
+            sudo apt-get install -y curl python-pip python-dev screen
+            echo "set nocompatible" > /root/.vimrc
+            sudo pip install turbolift eventlet
+
+outputs:
+    public_ip:
+        value: { get_attr: [ cf_nodes, accessIPv4 ] }
+        description: The public ip address of the server

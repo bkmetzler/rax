@@ -1,0 +1,17 @@
+heat_template_version: 2014-10-16
+description: Basic Ubuntu Cloud Server with CloudInit script ran
+resources:
+  cloud_server:
+    type: Rackspace::Cloud::Server
+    properties:
+        flavor: 1 GB Performance
+        image: Ubuntu 14.04 LTS (Trusty Tahr)
+        name: name-heattest
+        key_name: brian-key
+        user_data: 
+          get_file: /home/user/github/stratusops/my_instance_user_data.sh
+
+outputs:
+    public_ip:
+        value: { get_attr: [ cloud_server, accessIPv4 ] }
+        description: The public ip address of the server

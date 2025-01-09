@@ -1,0 +1,23 @@
+heat_template_version: 2014-10-16
+description: Basic Ubuntu Cloud Server with CloudInit script ran
+resources:
+  cloud_server:
+    type: Rackspace::Cloud::Server
+    properties:
+        flavor: 1 GB Performance
+        image: Ubuntu 14.04 LTS (Trusty Tahr)
+        name: name-heattest
+        key_name: name-key
+        user_data_format: RAW
+        user_data: |
+            export DEBIAN_FRONTEND=noninteractive
+            sudo apt-get update
+            sudo apt-get install -y curl python-pip python-dev screen
+            echo "set nocompatible" > /root/.vimrc
+            sudo pip install turbolift eventlet
+            uuidgen > /root/cloudqueueid.txt
+
+outputs:
+    public_ip:
+        value: { get_attr: [ cloud_server, accessIPv4 ] }
+        description: The public ip address of the server

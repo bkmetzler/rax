@@ -1,0 +1,92 @@
+heat_template_version: 2014-10-16
+description: String Replace on Multiple Ubuntu Cloud Server and Cloud Load Balancer: CloudInit script, Parameters Flavor Size Type and Server Count
+
+parameters:
+  instance_type:
+    type: string
+    description: Type of instance (flavor) to be used
+    default: 1 GB Performance 
+    constraints:
+      - allowed_values: [ 1 GB Performance, 2 GB Performance, 4 GB Performance ]
+        description: Value must be one of 1 GB Performance, 2 GB Performance, or 4 GB Performance. 
+  server_count:
+    type: number
+    description: Number of Cloud Servers to create as Web Nodes, 1 through 9
+    constraints:
+      - range: { min: 1, max: 9 }
+  stack_name_global:
+    type: string
+    description: String used as a prepended to all names
+    default: name-heattest
+    constraints:
+      - length: { min: 5 , max: 25 }
+
+resources:
+
+  web_lb:
+    type: Rackspace::Cloud::LoadBalancer
+    depends_on: web_nodes
+    properties:
+      name: 
+        str_replace:
+          template: | 
+            $stack_name-LoadBalancer
+          params:
+            $stack_name: { get_param: stack_name_global }
+      nodes:
+      - addresses: { get_attr: [web_nodes, privateIPv4]}                                                       
+        port: 80
+        condition: ENABLED
+      healthMonitor:
+        attemptsBeforeDeactivation: 3
+        delay: 10
+        timeout: 120
+        type: HTTP
+        path: "/"
+        statusRegex: "."
+        bodyRegex: "."
+      protocol: HTTP
+      port: 80
+      virtualIps:
+      - type: PUBLIC
+        ipVersion: IPV4
+    
+  web_nodes:
+    type: OS::Heat::ResourceGroup
+    properties:
+      count: { get_param: server_count }
+      resource_def:
+        type: Rackspace::Cloud::Server
+        properties:
+          flavor: { get_param: instance_type }
+          image: Ubuntu 14.04 LTS (Trusty Tahr)
+          name: 
+            str_replace:
+              template: | 
+                $stack_name-Compute Web Nodes 
+              params:
+                $stack_name: { get_param: stack_name_global }
+          user_data_format: RAW
+          user_data: 
+            str_replace:
+              template: |
+                export DEBIAN_FRONTEND=noninteractive
+                sudo apt-get update
+                sudo apt-get install -y curl python-pip python-dev screen apache2
+                sudo service apache2 start 
+                echo "set nocompatible" > /root/.vimrc
+                sudo pip install turbolift eventlet
+                uuidgen > /root/cloudqueueid.txt
+              params:
+                $server_root_password: Racker4Life
+
+outputs:
+    public_ip:
+        value: { get_attr: [ web_nodes, accessIPv4 ] }        
+        description: Cloud Servers Public IPs
+    servicenet_ip:
+        value: { get_attr: [ web_nodes, privateIPv4 ] }    
+        description: Cloud Servers ServiceNet IPs
+    lb_public_ips: 
+        value: { get_attr: [ web_lb, PublicIp ] }
+        description: Cloud Load Balancer Public IP
